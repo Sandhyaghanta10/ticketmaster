@@ -1,6 +1,8 @@
-# Movizoo (TicketMaster) - Online Movie Ticket Booking (desktop)
+# TicketMaster - Online Movie Ticket Booking (desktop)
 
 > Recreated in 2026. Originally built 2018–22.
+
+*Student project; not affiliated with or endorsed by the Ticketmaster company.*
 
 Desktop app for browsing movies and booking seats the TicketMaster way: **pick seats -> hold them while you check out -> pay -> get a ticket**. Backed by MongoDB.
 
@@ -20,7 +22,7 @@ booking rule against three dates between 2018 and 2023, including a show that cr
 that crosses New Year's Eve into 2024.
 
 ## From prototype to refactor
-The original 2018 prototype is kept in [`legacy/movizoo_original.py`](./legacy/movizoo_original.py)
+The original 2018 prototype (its on-screen branding was "Movizoo") is kept in [`legacy/movizoo_original.py`](./legacy/movizoo_original.py)
 (formatting restored, OMDb key removed, logic untouched). It was a single ~150-line script built on global state.
 This version keeps the idea and fixes what was wrong with it:
 

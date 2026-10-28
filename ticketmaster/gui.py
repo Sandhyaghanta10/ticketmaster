@@ -115,7 +115,7 @@ class TicketMasterApp(ttk.Frame):
 
 def main(repo: MongoRepository, now: Callable[[], datetime] = datetime.now) -> None:
     root = tk.Tk()
-    root.title("MOVIZOO")
+    root.title("TicketMaster")
     service, omdb = BookingService(repo, now), OmdbClient.from_env()
 
     def start(customer: str) -> None:
