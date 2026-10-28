@@ -3,10 +3,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Tuple
+from typing import Optional, Tuple
 
-CONFIRMED = "confirmed"
+PENDING = "pending"      # seats held during checkout
+CONFIRMED = "confirmed"  # paid, has a ticket number
 CANCELLED = "cancelled"
+EXPIRED = "expired"      # hold lapsed before payment
 
 
 @dataclass(frozen=True)
@@ -42,7 +44,9 @@ class Booking:
     customer: str
     seats: Tuple[str, ...]
     total: int
-    status: str = CONFIRMED
+    status: str = PENDING
+    expires_at: Optional[datetime] = None  # end of the checkout hold
+    ticket_no: str = ""
 
 
 class BookingError(Exception):

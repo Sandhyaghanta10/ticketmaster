@@ -2,13 +2,15 @@
 from __future__ import annotations
 
 import tkinter as tk
+from datetime import datetime
 from tkinter import messagebox, ttk
-from typing import Dict, Optional, Set
+from typing import Callable, Dict, Optional, Set
 
 from .login_gui import LoginFrame
-from .models import BookingError, Movie, Show
+from .models import Booking, BookingError, Movie, Show
 from .omdb import OmdbClient, OmdbError
 from .otp import OtpService
+from .payment_gui import PaymentDialog
 from .repository import MongoRepository
 from .service import BookingService
 
@@ -43,7 +45,7 @@ class TicketMasterApp(ttk.Frame):
         self.name = tk.StringVar(value=self.customer)
         ttk.Label(self, text="Your name").grid(row=3, column=0, sticky="e")
         ttk.Entry(self, textvariable=self.name, width=24).grid(row=3, column=1, sticky="w")
-        ttk.Button(self, text="Book selected seats", command=self._book).grid(row=4, column=1, sticky="w", pady=6)
+        ttk.Button(self, text="Proceed to payment", command=self._checkout).grid(row=4, column=1, sticky="w", pady=6)
         self.status = ttk.Label(self, text="Pick a movie, then a showtime.")
         self.status.grid(row=5, column=0, columnspan=2, sticky="w")
         self.details = ttk.Label(self, wraplength=520, justify="left")
@@ -74,6 +76,7 @@ class TicketMasterApp(ttk.Frame):
             self._render_seats(self.shows[index[0]].id)
 
     def _render_seats(self, show_id: str) -> None:
+        self.service.release_expired_holds()  # abandoned checkouts free their seats
         self.show = self.repo.get_show(show_id)  # fresh copy so we see other buyers' seats
         self.selected.clear()
         for child in self.grid_frame.winfo_children():
@@ -92,21 +95,28 @@ class TicketMasterApp(ttk.Frame):
         self.selected ^= {seat}
         self.seat_buttons[seat].config(bg="#27ae60" if seat in self.selected else "#ecf0f1")
 
-    def _book(self) -> None:
+    def _checkout(self) -> None:
+        """Hold the selected seats, then open the payment window."""
         if self.show is None:
             return messagebox.showwarning("Pick a show", "Choose a showtime first.")
         try:
-            booking = self.service.book(self.show.id, self.name.get(), self.selected)
-            self.status.config(text=f"Booked {', '.join(booking.seats)}  total Rs {booking.total}")
+            booking = self.service.hold(self.show.id, self.name.get(), self.selected)
         except BookingError as err:
             messagebox.showwarning("Cannot book", str(err))
-        self._render_seats(self.show.id)  # refresh either way (seats may have just been taken)
+            return self._render_seats(self.show.id)  # seats may have just been taken
+        self._render_seats(self.show.id)  # show our held seats as taken
+        PaymentDialog(self, self.service, booking, on_close=self._checkout_done)
+
+    def _checkout_done(self, paid: Optional[Booking]) -> None:
+        if paid:
+            self.status.config(text=f"Ticket {paid.ticket_no}: {', '.join(paid.seats)}  (Rs {paid.total})")
+        self._render_seats(self.show.id)
 
 
-def main(repo: MongoRepository) -> None:
+def main(repo: MongoRepository, now: Callable[[], datetime] = datetime.now) -> None:
     root = tk.Tk()
     root.title("MOVIZOO")
-    service, omdb = BookingService(repo), OmdbClient.from_env()
+    service, omdb = BookingService(repo, now), OmdbClient.from_env()
 
     def start(customer: str) -> None:
         login.destroy()

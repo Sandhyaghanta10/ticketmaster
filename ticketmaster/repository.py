@@ -9,7 +9,7 @@ from typing import List, Optional, Sequence
 
 from bson import ObjectId
 
-from .models import CONFIRMED, Booking, Movie, Show
+from .models import CONFIRMED, PENDING, Booking, Movie, Show
 
 
 def _movie(doc: dict) -> Movie:
@@ -24,7 +24,8 @@ def _show(doc: dict) -> Show:
 
 def _booking(doc: dict) -> Booking:
     return Booking(str(doc["_id"]), doc["show_id"], doc["customer"],
-                   tuple(doc["seats"]), doc["total"], doc["status"])
+                   tuple(doc["seats"]), doc["total"], doc["status"],
+                   doc.get("expires_at"), doc.get("ticket_no", ""))
 
 
 class MongoRepository:
@@ -68,11 +69,22 @@ class MongoRepository:
                                {"$pull": {"booked": {"$in": list(seats)}}})
 
     # --- bookings ----------------------------------------------------------
-    def add_booking(self, show_id: str, customer: str, seats: Sequence[str], total: int) -> Booking:
+    def add_booking(self, show_id: str, customer: str, seats: Sequence[str], total: int,
+                    expires_at: datetime) -> Booking:
+        """New bookings start as PENDING holds; they become CONFIRMED when paid."""
         doc = {"show_id": show_id, "customer": customer, "seats": list(seats),
-               "total": total, "status": CONFIRMED}
+               "total": total, "status": PENDING, "expires_at": expires_at}
         doc["_id"] = self._bookings.insert_one(doc).inserted_id
         return _booking(doc)
+
+    def confirm_booking(self, booking_id: str, ticket_no: str, bank: str) -> None:
+        self._bookings.update_one(
+            {"_id": ObjectId(booking_id)},
+            {"$set": {"status": CONFIRMED, "ticket_no": ticket_no, "bank": bank}})
+
+    def expired_holds(self, now: datetime) -> List[Booking]:
+        return [_booking(d) for d in self._bookings.find(
+            {"status": PENDING, "expires_at": {"$lte": now}})]
 
     def get_booking(self, booking_id: str) -> Optional[Booking]:
         doc = self._bookings.find_one({"_id": ObjectId(booking_id)})

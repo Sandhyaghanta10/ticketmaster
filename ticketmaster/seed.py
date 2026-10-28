@@ -6,10 +6,11 @@ from typing import Optional
 
 from .repository import MongoRepository
 
+# Sample data: part of the November 2018 lineup from the original prototype.
+# Run with `--as-of 2018-11-08` so these showtimes are still in the future.
 _DEMO = [("Guardians of the Galaxy Vol. 2", "Action", 136, "tt3896198"),
-         ("Interstellar", "Sci-Fi", 169, "tt0816692"),
-         ("The Dark Knight", "Action", 152, "tt0468569"),
-         ("Spirited Away", "Animation", 125, "tt0245429")]
+         ("2.0", "Sci-Fi", 148, ""),
+         ("Sarkar", "Drama", 162, "")]
 
 
 def seed_if_empty(repo: MongoRepository, now: Optional[datetime] = None) -> None:
