@@ -15,6 +15,7 @@ class Movie:
     title: str
     genre: str
     duration_min: int
+    imdb_id: str = ""  # optional; enables OMDb details
 
 
 @dataclass(frozen=True)

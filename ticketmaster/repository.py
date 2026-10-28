@@ -13,7 +13,8 @@ from .models import CONFIRMED, Booking, Movie, Show
 
 
 def _movie(doc: dict) -> Movie:
-    return Movie(str(doc["_id"]), doc["title"], doc["genre"], doc["duration_min"])
+    return Movie(str(doc["_id"]), doc["title"], doc["genre"], doc["duration_min"],
+                 doc.get("imdb_id", ""))
 
 
 def _show(doc: dict) -> Show:
@@ -31,8 +32,8 @@ class MongoRepository:
         self._movies, self._shows, self._bookings = db.movies, db.shows, db.bookings
 
     # --- movies & shows ----------------------------------------------------
-    def add_movie(self, title: str, genre: str, duration_min: int) -> Movie:
-        doc = {"title": title, "genre": genre, "duration_min": duration_min}
+    def add_movie(self, title: str, genre: str, duration_min: int, imdb_id: str = "") -> Movie:
+        doc = {"title": title, "genre": genre, "duration_min": duration_min, "imdb_id": imdb_id}
         doc["_id"] = self._movies.insert_one(doc).inserted_id
         return _movie(doc)
 

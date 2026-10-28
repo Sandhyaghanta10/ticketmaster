@@ -5,15 +5,19 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 from typing import Dict, Optional, Set
 
-from .models import BookingError, Show
+from .login_gui import LoginFrame
+from .models import BookingError, Movie, Show
+from .omdb import OmdbClient, OmdbError
+from .otp import OtpService
 from .repository import MongoRepository
 from .service import BookingService
 
 
 class TicketMasterApp(ttk.Frame):
-    def __init__(self, master: tk.Tk, repo: MongoRepository, service: BookingService) -> None:
+    def __init__(self, master: tk.Tk, repo: MongoRepository, service: BookingService,
+                 customer: str = "", omdb: Optional[OmdbClient] = None) -> None:
         super().__init__(master, padding=10)
-        self.repo, self.service = repo, service
+        self.repo, self.service, self.customer, self.omdb = repo, service, customer, omdb
         self.movies = repo.list_movies()
         self.shows: list = []
         self.show: Optional[Show] = None
@@ -36,21 +40,33 @@ class TicketMasterApp(ttk.Frame):
 
         self.grid_frame = ttk.Frame(self)
         self.grid_frame.grid(row=2, column=0, columnspan=2, pady=10)
-        self.name = tk.StringVar()
+        self.name = tk.StringVar(value=self.customer)
         ttk.Label(self, text="Your name").grid(row=3, column=0, sticky="e")
         ttk.Entry(self, textvariable=self.name, width=24).grid(row=3, column=1, sticky="w")
         ttk.Button(self, text="Book selected seats", command=self._book).grid(row=4, column=1, sticky="w", pady=6)
         self.status = ttk.Label(self, text="Pick a movie, then a showtime.")
         self.status.grid(row=5, column=0, columnspan=2, sticky="w")
+        self.details = ttk.Label(self, wraplength=520, justify="left")
+        self.details.grid(row=6, column=0, columnspan=2, sticky="w", pady=4)
 
     def _pick_movie(self, _event=None) -> None:
         index = self.movie_list.curselection()
         if not index:
             return
         self.shows = self.repo.shows_for_movie(self.movies[index[0]].id)
+        self._show_details(self.movies[index[0]])
         self.show_list.delete(0, "end")
         for s in self.shows:
             self.show_list.insert("end", f"{s.starts_at:%d %b %H:%M} - {s.screen} - Rs {s.price}")
+
+    def _show_details(self, movie: Movie) -> None:
+        if self.omdb is None or not movie.imdb_id:
+            self.details.config(text="")
+            return
+        try:  # blocks the UI up to the client timeout; fine for a demo, a thread would be next
+            self.details.config(text=self.omdb.lookup(movie.imdb_id).summary())
+        except OmdbError as err:
+            self.details.config(text=f"Details unavailable: {err}")
 
     def _pick_show(self, _event=None) -> None:
         index = self.show_list.curselection()
@@ -89,6 +105,12 @@ class TicketMasterApp(ttk.Frame):
 
 def main(repo: MongoRepository) -> None:
     root = tk.Tk()
-    root.title("TicketMaster")
-    TicketMasterApp(root, repo, BookingService(repo))
+    root.title("MOVIZOO")
+    service, omdb = BookingService(repo), OmdbClient.from_env()
+
+    def start(customer: str) -> None:
+        login.destroy()
+        TicketMasterApp(root, repo, service, customer, omdb)
+
+    login = LoginFrame(root, OtpService(), start)
     root.mainloop()
