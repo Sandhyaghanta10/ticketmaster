@@ -2,9 +2,7 @@
 
 Desktop app for browsing movies and booking seats, backed by MongoDB.
 
-> **Recreation note:** I originally built a movie-ticket booking platform as a college project
-> (Siva Subramaniya Nadar College of Engineering, 2018-22). That code is no longer available, so this repository is a
-> **fresh 2026 recreation** with the same stack (Python + Tkinter + MongoDB). The git history dates are real.
+> Recreated in 2026. Originally built 2018–22.
 
 ## Features
 - Browse movies and showtimes, pick seats from a live seat map (taken seats are disabled)
